@@ -25,5 +25,11 @@ hs_err_pid*
 .idea
 *.iml
 
+# ANTLR
+*.tokens
+**/parser/*Listener.java
+**/parser/*Lexer.java
+**/parser/*Parser.java
+
 # build dir
 build
