@@ -1,0 +1,70 @@
+<project name="octopus" default="main" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
+    <description>TOML parser library</description>
+
+    <property name="src.base" value="./src/"/>
+    <property name="src.parser" value="${src.base}/claw/octopus/parser"/>
+    <property name="build.dir" value="./build"/>
+    <property name="st4" value="./build/ST4.jar"/>
+    <property name="antlr.runtime" value="./build/antlr-runtime.jar"/>
+    <property name="antlr4" value="./build/antlr4.jar"/>
+    <property name="antlr4.runtime" value="./build/antlr4-runtime.jar"/>
+
+    <target name="init" depends="bootstrap"
+      description="Initialize build directories">
+      <tstamp/>
+      <mkdir dir="${build.dir}"/>
+    </target>
+
+    <target name="check-ivy">
+      <available file="${build.dir}/ivy.jar" property="ivy.present"/>
+    </target>
+
+    <target name="bootstrap" depends="check-ivy" unless="ivy.present" description="Download ivy jar if not present">
+      <mkdir dir="${build.dir}"/>
+      <get dest="${build.dir}/ivy.jar" src="https://repo1.maven.org/maven2/org/apache/ivy/ivy/2.3.0/ivy-2.3.0.jar"/>
+    </target>
+
+    <target name="resolve" depends="check-ivy" description="--> retrieve dependencies with ivy" if="ivy.present" unless="offline">
+      <taskdef resource="org/apache/ivy/ant/antlib.xml" uri="antlib:org.apache.ivy.ant">
+      <classpath>
+        <pathelement location="${build.dir}/ivy.jar"/>
+      </classpath>
+      </taskdef>
+      <ivy:retrieve log="quiet" file="./ivy.xml" pattern="./build/[artifact](-[classifier]).[ext]"/>
+    </target>
+
+    <uptodate property="antlr.required"
+              targetfile="${src.parser}/Toml.g4">
+        <srcfiles dir="${src.parser}" includes="*.java"/>
+    </uptodate>
+
+    <path id="antlr.path">
+      <pathelement path="${st4}"/>
+      <pathelement path="${antlr.runtime}"/>
+      <pathelement path="${antlr4}"/>
+      <pathelement path="${antlr4.runtime}"/>
+    </path>
+
+    <target name="antlr" if="antlr.required">
+      <java classname="org.antlr.v4.Tool" fork="true" failonerror="true"
+            classpathref="antlr.path">
+            <arg value="-package"/>
+            <arg value="claw.octopus.parser"/>
+            <arg line="${src.parser}/Toml.g4"/>
+      </java>
+    </target>
+
+    <target name="compile" depends="resolve, antlr"
+            description="compile the source">
+      <javac includeantruntime="false"
+             srcdir="${src.base}"
+             destdir="${build.dir}" classpathref="antlr.path"/>
+    </target>
+
+    <target name="jar" depends="compile" description="package, output to JAR">
+        <jar jarfile="${build.dir}/octopus.jar" basedir="${build.dir}"
+             includes="claw/**"/>
+    </target>
+
+    <target name="main" depends="init, compile, jar"/>
+</project>
